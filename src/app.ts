@@ -1,22 +1,31 @@
-import { hexToRgb } from './lib/color';
+import { hexToOklch, normalizeHex } from './lib/color';
 import { contrastRatio, readableTextColor, wcagLevel } from './lib/contrast';
-import { themePair, toCssVariables, toJson, toneScale, type ThemeTokens } from './lib/palette';
+import {
+  randomBaseColor,
+  themePair,
+  toCssVariables,
+  toJson,
+  toneScale,
+  type ThemeTokens,
+} from './lib/palette';
+import { applyTheme, nextTheme, readTheme, themeIcon, THEME_LABEL, type ThemeChoice } from './theme';
 
 const DEFAULT_COLOR = '#3f7fd4';
 
+// 三原色の重なりで減法混色を示すマーク。地のテーマに依らず色そのものを見せる。
 const LOGO_SVG = `
-<svg viewBox="0 0 64 64" width="44" height="44" role="img" aria-label="shikisaiのロゴ">
+<svg viewBox="0 0 48 48" width="36" height="36" role="img" aria-label="shikisai">
   <title>shikisai</title>
-  <circle cx="32" cy="32" r="24" fill="none" stroke="currentColor" stroke-width="4"/>
-  <path d="M32 8a24 24 0 0 1 0 48z" fill="currentColor" opacity="0.25"/>
-  <circle cx="24" cy="26" r="5" fill="#3f7fd4"/>
-  <circle cx="38" cy="20" r="5" fill="#c84b3c"/>
-  <circle cx="40" cy="40" r="5" fill="#e8b04b"/>
+  <circle cx="19" cy="19.5" r="11" fill="#e0483a" opacity="0.82"/>
+  <circle cx="29" cy="19.5" r="11" fill="#3f7fd4" opacity="0.82"/>
+  <circle cx="24" cy="28.5" r="11" fill="#eab308" opacity="0.82"/>
 </svg>`;
 
 export class App {
   private readonly el: Record<string, HTMLElement> = {};
   private exportKind: 'css' | 'json' = 'css';
+  private theme: ThemeChoice = readTheme();
+  private current = DEFAULT_COLOR;
 
   constructor(private readonly root: HTMLElement) {
     this.render();
@@ -26,44 +35,78 @@ export class App {
 
   private render(): void {
     this.root.innerHTML = `
-      <header class="site-header">
-        <span class="logo" aria-hidden="true">${LOGO_SVG}</span>
-        <div>
-          <h1>shikisai</h1>
-          <p class="tagline">ベースカラーからトーンスケールとライト・ダーク両テーマを同時設計する</p>
+      <a class="skip-link" href="#work">本文へスキップ</a>
+      <header class="masthead">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">${LOGO_SVG}</span>
+          <span class="brand-text">
+            <span class="wordmark">shikisai</span>
+            <span class="brand-kicker">色見本帳 — palette studio</span>
+          </span>
         </div>
-        <div class="picker">
-          <input type="color" data-id="picker" value="${DEFAULT_COLOR}" aria-label="ベースカラー">
-          <input type="text" data-id="hex" value="${DEFAULT_COLOR}" spellcheck="false" aria-label="HEX値">
-        </div>
+        <button type="button" class="ghost-btn theme-toggle" data-id="theme" aria-live="polite"></button>
       </header>
-      <p class="parse-error" data-id="error" hidden>HEXカラー(#rrggbb)として読めない</p>
-      <main>
-        <section class="pane">
-          <h2>トーンスケール</h2>
-          <p class="hint">バッジは白・黒それぞれの文字を載せたときのWCAGコントラスト判定</p>
-          <div class="scale" data-id="scale"></div>
+
+      <section class="chip" aria-labelledby="chip-label">
+        <div class="chip-field" data-id="chip">
+          <span class="chip-hex" data-id="chip-hex"></span>
+        </div>
+        <div class="chip-side">
+          <p class="kicker" id="chip-label">ベースカラー</p>
+          <div class="picker">
+            <input type="color" data-id="picker" value="${DEFAULT_COLOR}" aria-label="ベースカラーをピッカーで選ぶ" />
+            <input type="text" data-id="hex" value="${DEFAULT_COLOR}" spellcheck="false" autocomplete="off" aria-label="HEX値" />
+            <button type="button" class="ghost-btn" data-id="random" title="ランダムな色">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.3" fill="currentColor" stroke="none"/></svg>
+              <span>ランダム</span>
+            </button>
+          </div>
+          <p class="parse-error" data-id="error" role="alert" hidden>HEXカラー(#rrggbb)として読めない</p>
+          <dl class="readout" data-id="readout"></dl>
+        </div>
+      </section>
+
+      <main id="work">
+        <section class="block">
+          <div class="block-head">
+            <p class="kicker">tone scale</p>
+            <h2>トーンスケール</h2>
+          </div>
+          <p class="hint">明度を10段に刻んだスケール。バッジは白字・黒字を載せたときのWCAG判定。クリックでHEXをコピーする。</p>
+          <div class="fan" data-id="scale" role="list"></div>
         </section>
-        <section class="pane">
-          <h2>テーマプレビュー</h2>
-          <p class="hint">同じ色相から導いたライト・ダークのトークン。本文はAAA、ボタン文字はAAを保証する設計</p>
-          <div class="themes" data-id="themes"></div>
+
+        <section class="block">
+          <div class="block-head">
+            <p class="kicker">theme specimens</p>
+            <h2>テーマプレビュー</h2>
+          </div>
+          <p class="hint">同じ色相から導いたライト・ダークのトークン。本文はAAA、ボタン文字はAAを保証する設計。</p>
+          <div class="specimens" data-id="themes"></div>
         </section>
-        <section class="pane">
-          <div class="pane-head">
-            <h2>書き出し</h2>
+
+        <section class="block">
+          <div class="block-head pair">
             <span>
-              <button type="button" class="tab-btn active" data-id="tab-css">CSS変数</button>
-              <button type="button" class="tab-btn" data-id="tab-json">JSON</button>
-              <button type="button" class="primary-btn" data-id="copy">コピー</button>
+              <p class="kicker">export</p>
+              <h2>書き出し</h2>
+            </span>
+            <span class="export-controls">
+              <span class="tabs" role="tablist" aria-label="書き出し形式">
+                <button type="button" class="tab" role="tab" aria-selected="true" data-id="tab-css">CSS変数</button>
+                <button type="button" class="tab" role="tab" aria-selected="false" data-id="tab-json">JSON</button>
+              </span>
+              <button type="button" class="solid-btn" data-id="copy">コピー</button>
             </span>
           </div>
-          <pre class="code-view" data-id="output"></pre>
+          <pre class="code" data-id="output" tabindex="0" aria-label="書き出しコード"></pre>
         </section>
       </main>
-      <footer class="site-footer">
-        <p>パレットは知覚均等なOKLCH色空間で生成し、sRGB色域外の色は彩度を切り詰めて収める。計算はすべてブラウザ内で行う。</p>
+
+      <footer class="colophon">
+        <p>パレットは知覚均等なOKLCH色空間で生成し、sRGB色域外の色は彩度を切り詰めて収める。計算はすべてブラウザ内で完結する。</p>
       </footer>
+      <p class="sr-only" role="status" aria-live="polite" data-id="live"></p>
     `;
     this.root.querySelectorAll<HTMLElement>('[data-id]').forEach((node) => {
       this.el[node.dataset.id ?? ''] = node;
@@ -78,62 +121,104 @@ export class App {
       this.update(picker.value);
     });
     hex.addEventListener('input', () => this.update(hex.value));
+    this.el['random']!.addEventListener('click', () => {
+      const next = randomBaseColor();
+      hex.value = next;
+      this.update(next);
+    });
     this.el['tab-css']!.addEventListener('click', () => this.switchTab('css'));
     this.el['tab-json']!.addEventListener('click', () => this.switchTab('json'));
     this.el['copy']!.addEventListener('click', () => {
-      void navigator.clipboard.writeText(this.el['output']!.textContent ?? '');
+      void this.copy(this.el['output']!.textContent ?? '', '書き出しを');
     });
+    this.el['theme']!.addEventListener('click', () => {
+      this.theme = nextTheme(this.theme);
+      applyTheme(this.theme);
+      this.renderThemeToggle();
+    });
+    this.renderThemeToggle();
+  }
+
+  private renderThemeToggle(): void {
+    const btn = this.el['theme']!;
+    btn.innerHTML = `${themeIcon(this.theme)}<span>${THEME_LABEL[this.theme]}</span>`;
+    btn.setAttribute('aria-label', `テーマ: ${THEME_LABEL[this.theme]}(切り替え)`);
   }
 
   private switchTab(kind: 'css' | 'json'): void {
     this.exportKind = kind;
-    this.el['tab-css']!.classList.toggle('active', kind === 'css');
-    this.el['tab-json']!.classList.toggle('active', kind === 'json');
-    this.update((this.el['hex'] as HTMLInputElement).value);
+    this.el['tab-css']!.setAttribute('aria-selected', String(kind === 'css'));
+    this.el['tab-json']!.setAttribute('aria-selected', String(kind === 'json'));
+    this.setExport();
   }
 
   private update(value: string): void {
+    const canonical = normalizeHex(value);
     const error = this.el['error']!;
-    if (!hexToRgb(value)) {
-      error.hidden = false;
+    if (!canonical) {
+      // 入力途中の空欄では出さず、読めない文字列が入っているときだけ知らせる
+      error.hidden = value.trim() === '';
       return;
     }
     error.hidden = true;
-    const normalized = value.startsWith('#') ? value : `#${value}`;
-    (this.el['picker'] as HTMLInputElement).value =
-      normalized.length === 4 ? DEFAULT_COLOR : normalized;
+    this.current = canonical;
+    (this.el['picker'] as HTMLInputElement).value = canonical;
 
-    const scale = toneScale(normalized)!;
-    const pair = themePair(normalized)!;
-    this.renderScale(scale.tones);
-    this.renderThemes(pair);
-    this.el['output']!.textContent =
-      this.exportKind === 'css' ? toCssVariables(pair) : toJson(scale, pair);
+    // 地のテーマのアクセント(罫線・フォーカス輪郭)を選択色の色相へ寄せる。
+    // --accent は :root で解決されるため :root(html)側に書き込む。
+    const base = hexToOklch(canonical)!;
+    document.documentElement.style.setProperty('--base-h', String(Math.round(base.h)));
+
+    this.renderChip(canonical, base);
+    this.renderScale();
+    this.renderThemes();
+    this.setExport();
   }
 
-  private renderScale(tones: Array<{ step: number; hex: string }>): void {
+  private renderChip(hex: string, oklch: { l: number; c: number; h: number }): void {
+    const field = this.el['chip'] as HTMLElement;
+    field.style.background = hex;
+    const ink = readableTextColor(hex);
+    field.style.color = ink;
+    this.el['chip-hex']!.textContent = hex.toUpperCase();
+    this.el['readout']!.innerHTML = [
+      ['明度 L', `${(oklch.l * 100).toFixed(1)}%`],
+      ['彩度 C', oklch.c.toFixed(3)],
+      ['色相 H', `${Math.round(oklch.h)}°`],
+    ]
+      .map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`)
+      .join('');
+  }
+
+  private renderScale(): void {
     const wrap = this.el['scale']!;
+    const scale = toneScale(this.current)!;
     wrap.innerHTML = '';
-    for (const { step, hex } of tones) {
-      const cell = document.createElement('div');
-      cell.className = 'tone';
+    for (const { step, hex } of scale.tones) {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'swatch';
+      cell.setAttribute('role', 'listitem');
       cell.style.background = hex;
       cell.style.color = readableTextColor(hex);
+      cell.setAttribute('aria-label', `トーン${step} ${hex} をコピー`);
       const onWhite = wcagLevel(contrastRatio(hex, '#ffffff'));
       const onBlack = wcagLevel(contrastRatio(hex, '#000000'));
       cell.innerHTML = `
-        <span class="tone-step">${step}</span>
-        <code class="tone-hex">${hex}</code>
-        <span class="tone-badges">
-          <span class="badge ${onWhite === 'fail' ? 'badge-fail' : ''}">白字 ${onWhite}</span>
-          <span class="badge ${onBlack === 'fail' ? 'badge-fail' : ''}">黒字 ${onBlack}</span>
+        <span class="swatch-step">${step}</span>
+        <code class="swatch-hex">${hex}</code>
+        <span class="swatch-badges">
+          <span class="badge ${onWhite === 'fail' ? 'is-fail' : ''}">白 ${onWhite}</span>
+          <span class="badge ${onBlack === 'fail' ? 'is-fail' : ''}">黒 ${onBlack}</span>
         </span>`;
+      cell.addEventListener('click', () => void this.copy(hex, `${hex} を`));
       wrap.appendChild(cell);
     }
   }
 
-  private renderThemes(pair: { light: ThemeTokens; dark: ThemeTokens }): void {
+  private renderThemes(): void {
     const wrap = this.el['themes']!;
+    const pair = themePair(this.current)!;
     wrap.innerHTML = '';
     const cards: Array<[string, ThemeTokens]> = [
       ['ライト', pair.light],
@@ -143,20 +228,40 @@ export class App {
       const bodyRatio = contrastRatio(tokens.text, tokens.background).toFixed(1);
       const buttonRatio = contrastRatio(tokens.primaryText, tokens.primary).toFixed(1);
       const card = document.createElement('div');
-      card.className = 'theme-card';
+      card.className = 'specimen';
       card.style.background = tokens.background;
       card.style.color = tokens.text;
       card.style.borderColor = tokens.border;
       card.innerHTML = `
-        <p class="theme-name" style="color:${tokens.textDim}">${name}</p>
-        <div class="theme-surface" style="background:${tokens.surface};border-color:${tokens.border}">
+        <p class="specimen-name" style="color:${tokens.textDim}">${name}</p>
+        <div class="specimen-surface" style="background:${tokens.surface};border-color:${tokens.border}">
           <p>本文テキストの見え方を確かめるための一文。</p>
           <p style="color:${tokens.textDim}">補足の文字色はこの程度の濃さになる。</p>
-          <button type="button" style="background:${tokens.primary};color:${tokens.primaryText}">主要ボタン</button>
+          <button type="button" tabindex="-1" style="background:${tokens.primary};color:${tokens.primaryText}">主要ボタン</button>
         </div>
-        <p class="theme-ratios" style="color:${tokens.textDim}">本文 ${bodyRatio}:1 / ボタン文字 ${buttonRatio}:1</p>
+        <p class="specimen-ratios" style="color:${tokens.textDim}">本文 <b>${bodyRatio}</b>:1 / ボタン文字 <b>${buttonRatio}</b>:1</p>
       `;
       wrap.appendChild(card);
     }
+  }
+
+  private setExport(): void {
+    const scale = toneScale(this.current)!;
+    const pair = themePair(this.current)!;
+    this.el['output']!.textContent =
+      this.exportKind === 'css' ? toCssVariables(pair) : toJson(scale, pair);
+  }
+
+  private async copy(text: string, label: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.announce(`${label}コピーした`);
+    } catch {
+      this.announce('コピーできなかった');
+    }
+  }
+
+  private announce(message: string): void {
+    this.el['live']!.textContent = message;
   }
 }
