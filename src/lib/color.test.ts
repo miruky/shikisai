@@ -4,6 +4,7 @@ import {
   hexToOklch,
   hexToRgb,
   inGamut,
+  normalizeHex,
   oklchToHex,
   rgbToHex,
   rgbToOklch,
@@ -19,6 +20,20 @@ describe('hexToRgb / rgbToHex', () => {
   it('不正な表記はnull', () => {
     expect(hexToRgb('#12345')).toBeNull();
     expect(hexToRgb('red')).toBeNull();
+  });
+});
+
+describe('normalizeHex', () => {
+  it('短縮形・#なし・大文字・空白を6桁小文字へ揃える', () => {
+    expect(normalizeHex('f53')).toBe('#ff5533');
+    expect(normalizeHex('3F7FD4')).toBe('#3f7fd4');
+    expect(normalizeHex('  #ABC  ')).toBe('#aabbcc');
+  });
+
+  it('読めない文字列はnull', () => {
+    expect(normalizeHex('')).toBeNull();
+    expect(normalizeHex('#12')).toBeNull();
+    expect(normalizeHex('teal')).toBeNull();
   });
 });
 
