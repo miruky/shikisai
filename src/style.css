@@ -1,12 +1,68 @@
+/*
+  shikisai — 色見本帳。地のテーマは温度のある中立色に抑え、生成された色だけが
+  画面で彩度を持つ。箱と影を積まず、罫線・余白・タイポの階層で構成する。
+  地のアクセント(罫線・フォーカス輪郭)は選択中の色相 --base-h へ寄せ、
+  作業対象の色が道具自身にもうっすら映るようにしている。
+*/
+
 :root {
-  --bg: #14161c;
-  --panel: #1b1e26;
-  --panel-border: rgba(255, 255, 255, 0.09);
-  --text: #e8eaf0;
-  --text-dim: rgba(232, 234, 240, 0.55);
-  --accent: #5a9bd4;
-  --ng: #ff8a76;
-  font-family: 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+  color-scheme: light;
+
+  --paper: #f5f3ee;
+  --surface: #fbf9f4;
+  --ink: #211f1b;
+  --ink-soft: #5f5a51;
+  --ink-faint: #8a8472;
+  --rule: #e4ded1;
+  --rule-strong: #d2cab8;
+  --danger: #b1453a;
+
+  --base-h: 250;
+  --accent: #586a8c;
+  --accent: oklch(0.52 0.09 var(--base-h, 250));
+  --accent-weak: #9aa6bd;
+  --accent-weak: oklch(0.72 0.05 var(--base-h, 250));
+
+  --display: 'Fraunces', 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+  --serif: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+  --sans: 'Hiragino Sans', 'Noto Sans JP', system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #15140f;
+  --surface: #1c1a14;
+  --ink: #ece7da;
+  --ink-soft: #a7a08e;
+  --ink-faint: #837c69;
+  --rule: #2a271f;
+  --rule-strong: #3b372c;
+  --danger: #ef9081;
+  --accent: #93a7c6;
+  --accent: oklch(0.8 0.1 var(--base-h, 250));
+  --accent-weak: #5b6577;
+  --accent-weak: oklch(0.55 0.06 var(--base-h, 250));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --paper: #15140f;
+    --surface: #1c1a14;
+    --ink: #ece7da;
+    --ink-soft: #a7a08e;
+    --ink-faint: #837c69;
+    --rule: #2a271f;
+    --rule-strong: #3b372c;
+    --danger: #ef9081;
+    --accent: #93a7c6;
+    --accent: oklch(0.8 0.1 var(--base-h, 250));
+    --accent-weak: #5b6577;
+    --accent-weak: oklch(0.55 0.06 var(--base-h, 250));
+  }
 }
 
 * {
@@ -16,259 +72,503 @@
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.7;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #app {
-  max-width: 1100px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 32px clamp(16px, 4vw, 48px) 48px;
+  padding: clamp(24px, 5vw, 52px) clamp(18px, 5vw, 56px) 72px;
 }
 
-.site-header {
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 50;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 16px;
+  border-radius: 0 0 8px 8px;
+  text-decoration: none;
+  transition: top 0.2s var(--ease);
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ── 見出し帯 ── */
+
+.masthead {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
   flex-wrap: wrap;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
 }
 
-.logo {
-  color: var(--text);
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
   display: inline-flex;
 }
 
-.site-header h1 {
-  font-size: 30px;
-  letter-spacing: 0.08em;
+.wordmark {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.55rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
-.tagline {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin-top: 2px;
+.brand-kicker {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ── ボタン類 ── */
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  background: none;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition:
+    color 0.18s var(--ease),
+    border-color 0.18s var(--ease);
+}
+
+.ghost-btn:hover {
+  color: var(--ink);
+  border-color: var(--accent-weak);
+}
+
+.solid-btn {
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--ink);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition:
+    background-color 0.18s var(--ease),
+    transform 0.18s var(--ease);
+}
+
+.solid-btn:hover {
+  background: var(--accent);
+}
+
+.solid-btn:active {
+  transform: translateY(1px);
+}
+
+/* ── ヒーロー: 色チップ ── */
+
+.chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(20px, 4vw, 48px);
+  margin-top: clamp(28px, 5vw, 52px);
+}
+
+.chip-field {
+  min-height: 230px;
+  display: flex;
+  align-items: flex-end;
+  padding: 22px 24px;
+  transition:
+    background-color 0.4s var(--ease),
+    color 0.4s var(--ease);
+}
+
+.chip-hex {
+  font-family: var(--display);
+  font-size: clamp(2.2rem, 6vw, 3.8rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
 }
 
 .picker {
-  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .picker input[type='color'] {
-  width: 52px;
+  width: 48px;
   height: 40px;
-  border: 1px solid var(--panel-border);
+  padding: 0;
+  border: 1px solid var(--rule-strong);
   border-radius: 8px;
   background: none;
   cursor: pointer;
 }
 
 .picker input[type='text'] {
-  width: 110px;
-  font:
-    14px 'SF Mono',
-    Menlo,
-    Consolas,
-    monospace;
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--panel-border);
+  width: 120px;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
   border-radius: 8px;
   padding: 9px 12px;
+  transition: border-color 0.18s var(--ease);
 }
 
-.picker input[type='text']:focus {
-  outline: 1px solid var(--accent);
+.picker input[type='text']:focus-visible {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .parse-error {
-  color: var(--ng);
-  font-size: 13px;
-  margin-bottom: 12px;
+  color: var(--danger);
+  font-size: 0.82rem;
 }
 
-.pane {
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.pane h2 {
-  font-size: 12px;
-  letter-spacing: 0.25em;
-  color: var(--text-dim);
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.pane-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.pane-head h2 {
-  margin-bottom: 0;
-}
-
-.hint {
-  font-size: 12.5px;
-  color: var(--text-dim);
-  margin-bottom: 12px;
-}
-
-.scale {
+.readout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: 0;
-  border-radius: 10px;
-  overflow: hidden;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
 }
 
-.tone {
-  padding: 14px 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+.readout div {
+  background: var(--paper);
+  padding: 11px 14px;
 }
 
-.tone-step {
-  font-weight: 700;
+.readout dt {
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
-.tone-hex {
-  font:
-    11px 'SF Mono',
-    Menlo,
-    Consolas,
-    monospace;
-  opacity: 0.85;
-}
-
-.tone-badges {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
-}
-
-.badge {
-  font-size: 10px;
-  opacity: 0.9;
-}
-
-.badge-fail {
-  opacity: 0.45;
-  text-decoration: line-through;
-}
-
-.themes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-@media (max-width: 760px) {
-  .themes {
-    grid-template-columns: 1fr;
-  }
-}
-
-.theme-card {
-  border: 1px solid;
-  border-radius: 12px;
-  padding: 18px;
-}
-
-.theme-name {
-  font-size: 12px;
-  letter-spacing: 0.2em;
-  margin-bottom: 10px;
-}
-
-.theme-surface {
-  border: 1px solid;
-  border-radius: 10px;
-  padding: 16px;
-  display: grid;
-  gap: 8px;
-  font-size: 14px;
-}
-
-.theme-surface button {
-  justify-self: start;
-  font: inherit;
-  font-weight: 700;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 18px;
-  cursor: pointer;
-}
-
-.theme-ratios {
-  font-size: 12px;
-  margin-top: 10px;
+.readout dd {
+  margin-top: 3px;
+  font-family: var(--display);
+  font-size: 1.3rem;
   font-variant-numeric: tabular-nums;
 }
 
-.code-view {
-  font:
-    12.5px/1.6 'SF Mono',
-    Menlo,
-    Consolas,
-    monospace;
+/* ── セクション ── */
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(40px, 7vw, 72px);
+  margin-top: clamp(40px, 7vw, 72px);
+}
+
+.block-head {
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.block-head.pair {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.kicker {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.block-head h2 {
+  margin-top: 5px;
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+}
+
+.hint {
+  max-width: 56ch;
+  margin-bottom: 18px;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+/* ── トーンスケール(色見本の帯) ── */
+
+.fan {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  border: 1px solid var(--rule);
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 136px;
+  padding: 13px 11px;
+  font: inherit;
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  transition:
+    background-color 0.35s var(--ease),
+    color 0.35s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+
+.swatch:hover {
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, currentColor 32%, transparent);
+}
+
+.swatch:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -5px;
+}
+
+.swatch-step {
+  font-weight: 700;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.swatch-hex {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  opacity: 0.82;
+}
+
+.swatch-badges {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+}
+
+.badge {
+  font-variant-numeric: tabular-nums;
+}
+
+.badge.is-fail {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+/* ── テーマ見本 ── */
+
+.specimens {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.specimen {
+  border: 1px solid;
+  padding: 20px;
+  transition:
+    background-color 0.4s var(--ease),
+    color 0.4s var(--ease);
+}
+
+.specimen-name {
+  margin-bottom: 14px;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.specimen-surface {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.specimen-surface button {
+  justify-self: start;
+  margin-top: 4px;
+  font: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 16px;
+  cursor: default;
+}
+
+.specimen-ratios {
+  margin-top: 14px;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.specimen-ratios b {
+  font-weight: 700;
+}
+
+/* ── 書き出し ── */
+
+.export-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.tab {
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 2px;
+  cursor: pointer;
+  transition:
+    color 0.18s var(--ease),
+    border-color 0.18s var(--ease);
+}
+
+.tab[aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.7;
   white-space: pre-wrap;
-  background: rgba(0, 0, 0, 0.28);
-  border-radius: 8px;
-  padding: 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 16px;
   max-height: 380px;
   overflow: auto;
 }
 
-button {
-  cursor: pointer;
+/* ── 脚注 ── */
+
+.colophon {
+  margin-top: clamp(48px, 8vw, 80px);
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+  max-width: 60ch;
+  line-height: 1.7;
 }
 
-.primary-btn {
-  font: inherit;
-  background: var(--accent);
-  color: #0d1622;
-  border: none;
-  border-radius: 8px;
-  padding: 7px 16px;
-  font-weight: 700;
-  margin-left: 8px;
+/* ── 狭い画面 ── */
+
+@media (max-width: 760px) {
+  .chip {
+    grid-template-columns: 1fr;
+  }
+
+  .chip-field {
+    min-height: 150px;
+  }
+
+  .specimens {
+    grid-template-columns: 1fr;
+  }
+
+  .fan {
+    grid-template-columns: 1fr;
+  }
+
+  .swatch {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    min-height: 0;
+    padding: 13px 16px;
+  }
+
+  .swatch-hex {
+    margin-right: auto;
+  }
+
+  .swatch-badges {
+    margin-top: 0;
+    flex-direction: row;
+    gap: 10px;
+  }
 }
 
-.primary-btn:hover {
-  filter: brightness(1.1);
-}
-
-.tab-btn {
-  font: inherit;
-  font-size: 13px;
-  background: none;
-  border: 1px solid var(--panel-border);
-  border-radius: 6px;
-  color: var(--text-dim);
-  padding: 6px 12px;
-}
-
-.tab-btn.active {
-  color: var(--text);
-  border-color: var(--accent);
-}
-
-.site-footer {
-  margin-top: 8px;
-  color: var(--text-dim);
-  font-size: 12px;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
