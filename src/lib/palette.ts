@@ -33,6 +33,15 @@ function chromaAt(baseChroma: number, lightness: number): number {
   return baseChroma * factor;
 }
 
+// そこそこ彩度のある中明度の色をランダムに選ぶ。極端に淡い・濁る色は避け、
+// どの色相でもスケールが破綻しにくい範囲に収める。
+export function randomBaseColor(): string {
+  const h = Math.random() * 360;
+  const l = 0.55 + Math.random() * 0.12;
+  const c = 0.1 + Math.random() * 0.1;
+  return oklchToHex({ l, c, h });
+}
+
 export function toneScale(baseHex: string): ToneScale | null {
   const base = hexToOklch(baseHex);
   if (!base) return null;
