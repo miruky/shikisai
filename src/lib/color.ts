@@ -30,6 +30,14 @@ export function rgbToHex({ r, g, b }: Rgb): string {
   return `#${((clamp(r) << 16) | (clamp(g) << 8) | clamp(b)).toString(16).padStart(6, '0')}`;
 }
 
+// 入力を正規の #rrggbb(小文字)へ揃える。3桁短縮形・#なし・大文字・前後空白を吸収し、
+// 読めない文字列は null を返す。<input type="color"> は6桁しか受け付けないため、
+// ピッカーへ渡す前に必ずこの形へ通す。
+export function normalizeHex(input: string): string | null {
+  const rgb = hexToRgb(input);
+  return rgb ? rgbToHex(rgb) : null;
+}
+
 function srgbToLinear(channel: number): number {
   const c = channel / 255;
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
