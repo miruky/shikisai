@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { hexToOklch } from './color';
+import { hexToOklch, normalizeHex } from './color';
 import { contrastRatio } from './contrast';
-import { themePair, toCssVariables, toJson, TONE_STEPS, toneScale } from './palette';
+import { randomBaseColor, themePair, toCssVariables, toJson, TONE_STEPS, toneScale } from './palette';
 
 describe('toneScale', () => {
   it('10トーンを明るい順に生成する', () => {
@@ -43,6 +43,21 @@ describe('themePair', () => {
       expect(contrastRatio(pair.light.primaryText, pair.light.primary)).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(pair.dark.primaryText, pair.dark.primary)).toBeGreaterThanOrEqual(4.5);
     }
+  });
+});
+
+describe('randomBaseColor', () => {
+  it('常に正規のHEXを返し、スケールを生成できる', () => {
+    for (let i = 0; i < 50; i += 1) {
+      const hex = randomBaseColor();
+      expect(normalizeHex(hex)).toBe(hex);
+      expect(toneScale(hex)).not.toBeNull();
+    }
+  });
+
+  it('呼ぶたびに色が変わる', () => {
+    const colors = new Set(Array.from({ length: 20 }, () => randomBaseColor()));
+    expect(colors.size).toBeGreaterThan(1);
   });
 });
 
