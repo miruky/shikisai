@@ -102,7 +102,7 @@ export class App {
             <h2>トーンスケール</h2>
           </div>
           <p class="hint">明度を10段に刻んだスケール。バッジは白字・黒字を載せたときのWCAG判定。クリックでHEXをコピーする。</p>
-          <div class="fan" data-id="scale" role="list"></div>
+          <div class="fan" data-id="scale" role="group" aria-label="トーンスケールの各色"></div>
         </section>
 
         <section class="block">
@@ -130,21 +130,22 @@ export class App {
               <h2>書き出し</h2>
             </span>
             <span class="export-controls">
-              <span class="tabs" role="tablist" aria-label="書き出し形式">
+              <span class="tabs" role="tablist" aria-label="書き出し形式" data-id="tablist">
                 ${TABS.map(
                   ([id, , label]) =>
-                    `<button type="button" class="tab" role="tab" aria-selected="false" data-id="${id}">${label}</button>`,
+                    `<button type="button" class="tab" role="tab" aria-selected="false" aria-controls="export-output" tabindex="-1" data-id="${id}">${label}</button>`,
                 ).join('')}
               </span>
               <button type="button" class="solid-btn" data-id="copy">コピー</button>
             </span>
           </div>
-          <pre class="code" data-id="output" tabindex="0" aria-label="書き出しコード"></pre>
+          <pre class="code" id="export-output" data-id="output" tabindex="0" role="region" aria-label="書き出しコード"></pre>
         </section>
       </main>
 
       <footer class="colophon">
         <p>パレットは知覚均等なOKLCH色空間で生成し、sRGB色域外の色は彩度を切り詰めて収める。計算はすべてブラウザ内で完結する。</p>
+        <p class="shortcuts">キー操作 <kbd>R</kbd> ランダム<span class="sep">/</span><kbd>T</kbd> テーマ切替<span class="sep">/</span><kbd>C</kbd> 書き出しコピー</p>
       </footer>
       <p class="sr-only" role="status" aria-live="polite" data-id="live"></p>
     `;
@@ -156,18 +157,13 @@ export class App {
   private wire(): void {
     const picker = this.el['picker'] as HTMLInputElement;
     const hex = this.el['hex'] as HTMLInputElement;
-    // input はドラッグ・打鍵ごとの即時プレビュー、change は確定(履歴に残す)
-    picker.addEventListener('input', () => {
-      hex.value = picker.value;
-      this.update(picker.value, false);
-    });
+    // input はドラッグ・打鍵ごとの即時プレビュー、change は確定(履歴に残す)。
+    // 入力欄どうしの同期は update() がまとめて行う。
+    picker.addEventListener('input', () => this.update(picker.value, false));
     picker.addEventListener('change', () => this.update(picker.value, true));
     hex.addEventListener('input', () => this.update(hex.value, false));
     hex.addEventListener('change', () => this.update(hex.value, true));
-    this.el['random']!.addEventListener('click', () => {
-      this.rollDice();
-      this.pick(randomBaseColor());
-    });
+    this.el['random']!.addEventListener('click', () => this.randomize());
     const share = this.el['share']!;
     share.addEventListener('click', () => {
       void this.copyText(location.href, '共有リンクを').then((ok) => ok && this.flash(share, 'ring'));
@@ -175,25 +171,25 @@ export class App {
     for (const [id, fmt] of TABS) {
       this.el[id]!.addEventListener('click', () => this.switchTab(fmt));
     }
-    const copyBtn = this.el['copy']!;
-    copyBtn.addEventListener('click', () => {
-      void this.copyText(this.el['output']!.textContent ?? '', '書き出しを').then(
-        (ok) => ok && this.flash(copyBtn, 'label'),
-      );
+    this.el['tablist']!.addEventListener('keydown', (e) => {
+      const key = (e as KeyboardEvent).key;
+      if (key === 'ArrowRight' || key === 'ArrowDown') {
+        e.preventDefault();
+        this.moveTab(1);
+      } else if (key === 'ArrowLeft' || key === 'ArrowUp') {
+        e.preventDefault();
+        this.moveTab(-1);
+      }
     });
-    this.el['theme']!.addEventListener('click', () => {
-      this.theme = nextTheme(this.theme);
-      applyTheme(this.theme);
-      this.renderThemeToggle();
-    });
+    document.addEventListener('keydown', (e) => this.onShortcut(e));
+    this.el['copy']!.addEventListener('click', () => this.copyExport());
+    this.el['theme']!.addEventListener('click', () => this.cycleTheme());
     this.renderThemeToggle();
     this.applyTabUI();
   }
 
-  // ボタン経由で色を確定する(ピッカーとHEX欄も同期させる)
+  // ボタン経由で色を確定する。入力欄の同期は update() が受け持つ。
   private pick(color: string): void {
-    (this.el['picker'] as HTMLInputElement).value = color;
-    (this.el['hex'] as HTMLInputElement).value = color;
     this.update(color, true);
   }
 
@@ -205,6 +201,34 @@ export class App {
     svg.classList.remove('rolling');
     void svg.getBoundingClientRect();
     svg.classList.add('rolling');
+  }
+
+  private randomize(): void {
+    this.rollDice();
+    this.pick(randomBaseColor());
+  }
+
+  private cycleTheme(): void {
+    this.theme = nextTheme(this.theme);
+    applyTheme(this.theme);
+    this.renderThemeToggle();
+  }
+
+  private copyExport(): void {
+    const btn = this.el['copy']!;
+    void this.copyText(this.el['output']!.textContent ?? '', '書き出しを').then(
+      (ok) => ok && this.flash(btn, 'label'),
+    );
+  }
+
+  // r=ランダム / t=テーマ切替 / c=書き出しコピー。入力欄では無効。
+  private onShortcut(e: KeyboardEvent): void {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.key === 'r') this.randomize();
+    else if (e.key === 't') this.cycleTheme();
+    else if (e.key === 'c') this.copyExport();
   }
 
   private renderThemeToggle(): void {
@@ -222,8 +246,20 @@ export class App {
 
   private applyTabUI(): void {
     for (const [id, fmt] of TABS) {
-      this.el[id]!.setAttribute('aria-selected', String(this.exportKind === fmt));
+      const selected = this.exportKind === fmt;
+      const tab = this.el[id]!;
+      tab.setAttribute('aria-selected', String(selected));
+      // タブリストはロービングtabindex。選択中だけTabで入れ、中は矢印キーで移動する。
+      tab.tabIndex = selected ? 0 : -1;
     }
+  }
+
+  // 矢印キーでタブ間を移動して即座に切り替える(WAI-ARIAのタブパターン)
+  private moveTab(delta: number): void {
+    const index = TABS.findIndex(([, fmt]) => fmt === this.exportKind);
+    const next = TABS[(index + delta + TABS.length) % TABS.length]!;
+    this.switchTab(next[1]);
+    this.el[next[0]]!.focus();
   }
 
   private update(value: string, commit: boolean): void {
@@ -283,7 +319,6 @@ export class App {
       cell.type = 'button';
       cell.className = enter ? 'swatch enter' : 'swatch';
       if (enter) cell.style.animationDelay = `${i * 35}ms`;
-      cell.setAttribute('role', 'listitem');
       cell.style.background = hex;
       cell.style.color = readableTextColor(hex);
       cell.setAttribute('aria-label', `トーン${step} ${hex} をコピー`);
@@ -315,12 +350,12 @@ export class App {
       label.textContent = scheme.label;
       const strip = document.createElement('div');
       strip.className = 'harmony-strip';
-      strip.setAttribute('role', 'list');
+      strip.setAttribute('role', 'group');
+      strip.setAttribute('aria-label', scheme.label);
       for (const color of scheme.colors) {
         const sw = document.createElement('button');
         sw.type = 'button';
         sw.className = 'harmony-swatch';
-        sw.setAttribute('role', 'listitem');
         sw.style.background = color;
         sw.style.color = readableTextColor(color);
         sw.setAttribute('aria-label', `${scheme.label}の${color}をベースにする`);
