@@ -1,5 +1,6 @@
 import { hexToOklch, normalizeHex } from './lib/color';
 import { contrastRatio, readableTextColor, wcagLevel } from './lib/contrast';
+import { pushRecent } from './lib/history';
 import {
   randomBaseColor,
   themePair,
@@ -8,9 +9,11 @@ import {
   toneScale,
   type ThemeTokens,
 } from './lib/palette';
+import { decodeShare, encodeShare, type ExportFormat } from './lib/share';
 import { applyTheme, nextTheme, readTheme, themeIcon, THEME_LABEL, type ThemeChoice } from './theme';
 
 const DEFAULT_COLOR = '#3f7fd4';
+const RECENT_KEY = 'shikisai:recent';
 
 // 三原色の重なりで減法混色を示すマーク。地のテーマに依らず色そのものを見せる。
 const LOGO_SVG = `
@@ -21,16 +24,22 @@ const LOGO_SVG = `
   <circle cx="24" cy="28.5" r="11" fill="#eab308" opacity="0.82"/>
 </svg>`;
 
+const LINK_ICON = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.66 0l3-3A4 4 0 0 0 13 4.34l-1.5 1.5"/><path d="M14 11a4 4 0 0 0-5.66 0l-3 3A4 4 0 0 0 11 19.66l1.5-1.5"/></svg>`;
+
 export class App {
   private readonly el: Record<string, HTMLElement> = {};
-  private exportKind: 'css' | 'json' = 'css';
+  private exportKind: ExportFormat = 'css';
   private theme: ThemeChoice = readTheme();
   private current = DEFAULT_COLOR;
+  private recent: string[] = [];
 
   constructor(private readonly root: HTMLElement) {
+    this.recent = this.readRecent();
+    const initial = decodeShare(location.search);
+    this.exportKind = initial.format ?? 'css';
     this.render();
     this.wire();
-    this.update(DEFAULT_COLOR);
+    this.update(initial.color ?? DEFAULT_COLOR, true);
   }
 
   private render(): void {
@@ -60,9 +69,16 @@ export class App {
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.3" fill="currentColor" stroke="none"/></svg>
               <span>ランダム</span>
             </button>
+            <button type="button" class="ghost-btn" data-id="share" title="この配色への共有リンクをコピー">
+              ${LINK_ICON}<span>リンク</span>
+            </button>
           </div>
           <p class="parse-error" data-id="error" role="alert" hidden>HEXカラー(#rrggbb)として読めない</p>
           <dl class="readout" data-id="readout"></dl>
+          <div class="recent" data-id="recent-row" hidden>
+            <span class="recent-label kicker">最近</span>
+            <span class="recent-dots" data-id="recent"></span>
+          </div>
         </div>
       </section>
 
@@ -116,15 +132,17 @@ export class App {
   private wire(): void {
     const picker = this.el['picker'] as HTMLInputElement;
     const hex = this.el['hex'] as HTMLInputElement;
+    // input はドラッグ・打鍵ごとの即時プレビュー、change は確定(履歴に残す)
     picker.addEventListener('input', () => {
       hex.value = picker.value;
-      this.update(picker.value);
+      this.update(picker.value, false);
     });
-    hex.addEventListener('input', () => this.update(hex.value));
-    this.el['random']!.addEventListener('click', () => {
-      const next = randomBaseColor();
-      hex.value = next;
-      this.update(next);
+    picker.addEventListener('change', () => this.update(picker.value, true));
+    hex.addEventListener('input', () => this.update(hex.value, false));
+    hex.addEventListener('change', () => this.update(hex.value, true));
+    this.el['random']!.addEventListener('click', () => this.pick(randomBaseColor()));
+    this.el['share']!.addEventListener('click', () => {
+      void this.copy(location.href, '共有リンクを');
     });
     this.el['tab-css']!.addEventListener('click', () => this.switchTab('css'));
     this.el['tab-json']!.addEventListener('click', () => this.switchTab('json'));
@@ -137,6 +155,14 @@ export class App {
       this.renderThemeToggle();
     });
     this.renderThemeToggle();
+    this.applyTabUI();
+  }
+
+  // ボタン経由で色を確定する(ピッカーとHEX欄も同期させる)
+  private pick(color: string): void {
+    (this.el['picker'] as HTMLInputElement).value = color;
+    (this.el['hex'] as HTMLInputElement).value = color;
+    this.update(color, true);
   }
 
   private renderThemeToggle(): void {
@@ -145,14 +171,19 @@ export class App {
     btn.setAttribute('aria-label', `テーマ: ${THEME_LABEL[this.theme]}(切り替え)`);
   }
 
-  private switchTab(kind: 'css' | 'json'): void {
+  private switchTab(kind: ExportFormat): void {
     this.exportKind = kind;
-    this.el['tab-css']!.setAttribute('aria-selected', String(kind === 'css'));
-    this.el['tab-json']!.setAttribute('aria-selected', String(kind === 'json'));
+    this.applyTabUI();
     this.setExport();
+    this.syncUrl();
   }
 
-  private update(value: string): void {
+  private applyTabUI(): void {
+    this.el['tab-css']!.setAttribute('aria-selected', String(this.exportKind === 'css'));
+    this.el['tab-json']!.setAttribute('aria-selected', String(this.exportKind === 'json'));
+  }
+
+  private update(value: string, commit: boolean): void {
     const canonical = normalizeHex(value);
     const error = this.el['error']!;
     if (!canonical) {
@@ -173,6 +204,8 @@ export class App {
     this.renderScale();
     this.renderThemes();
     this.setExport();
+    this.syncUrl();
+    if (commit) this.remember(canonical);
   }
 
   private renderChip(hex: string, oklch: { l: number; c: number; h: number }): void {
@@ -250,6 +283,51 @@ export class App {
     const pair = themePair(this.current)!;
     this.el['output']!.textContent =
       this.exportKind === 'css' ? toCssVariables(pair) : toJson(scale, pair);
+  }
+
+  private syncUrl(): void {
+    const qs = encodeShare({ color: this.current, format: this.exportKind });
+    history.replaceState(null, '', `${location.pathname}?${qs}`);
+  }
+
+  private remember(color: string): void {
+    this.recent = pushRecent(this.recent, color);
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(this.recent));
+    } catch {
+      // 保存できなくても表示は続ける
+    }
+    this.renderRecent();
+  }
+
+  private readRecent(): string[] {
+    try {
+      const raw = localStorage.getItem(RECENT_KEY);
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((c): c is string => typeof c === 'string' && normalizeHex(c) === c);
+    } catch {
+      return [];
+    }
+  }
+
+  private renderRecent(): void {
+    const row = this.el['recent-row']!;
+    const dots = this.el['recent']!;
+    const others = this.recent.filter((c) => c !== this.current);
+    row.hidden = others.length === 0;
+    dots.innerHTML = '';
+    for (const color of others) {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'recent-dot';
+      dot.style.background = color;
+      dot.title = color;
+      dot.setAttribute('aria-label', `${color} に戻す`);
+      dot.addEventListener('click', () => this.pick(color));
+      dots.appendChild(dot);
+    }
   }
 
   private async copy(text: string, label: string): Promise<void> {

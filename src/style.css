@@ -79,6 +79,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-optical-sizing: auto;
 }
 
 #app {
@@ -147,7 +148,8 @@ body {
   font-size: 1.55rem;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.005em;
+  font-optical-sizing: auto;
 }
 
 .brand-kicker {
@@ -229,9 +231,10 @@ body {
   font-family: var(--display);
   font-size: clamp(2.2rem, 6vw, 3.8rem);
   font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  line-height: 0.95;
+  letter-spacing: -0.025em;
   font-variant-numeric: tabular-nums;
+  font-optical-sizing: auto;
 }
 
 .chip-side {
@@ -305,6 +308,36 @@ body {
   font-family: var(--display);
   font-size: 1.3rem;
   font-variant-numeric: tabular-nums;
+  font-optical-sizing: auto;
+}
+
+.recent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recent-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recent-dot {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    transform 0.15s var(--ease),
+    border-color 0.15s var(--ease);
+}
+
+.recent-dot:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-weak);
 }
 
 /* ── セクション ── */
@@ -341,7 +374,8 @@ main {
   margin-top: 5px;
   font-family: var(--serif);
   font-weight: 600;
-  font-size: 1.4rem;
+  font-size: 1.45rem;
+  line-height: 1.25;
   letter-spacing: 0.02em;
 }
 
@@ -350,6 +384,7 @@ main {
   margin-bottom: 18px;
   color: var(--ink-soft);
   font-size: 0.85rem;
+  text-wrap: pretty;
 }
 
 /* ── トーンスケール(色見本の帯) ── */
@@ -524,6 +559,7 @@ main {
   font-size: 0.8rem;
   max-width: 60ch;
   line-height: 1.7;
+  text-wrap: pretty;
 }
 
 /* ── 狭い画面 ── */
