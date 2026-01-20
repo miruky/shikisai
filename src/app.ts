@@ -1,11 +1,14 @@
 import { hexToOklch, normalizeHex } from './lib/color';
 import { contrastRatio, readableTextColor, wcagLevel } from './lib/contrast';
+import { harmonies } from './lib/harmony';
 import { pushRecent } from './lib/history';
 import {
   randomBaseColor,
   themePair,
   toCssVariables,
   toJson,
+  toScss,
+  toTailwind,
   toneScale,
   type ThemeTokens,
 } from './lib/palette';
@@ -26,6 +29,13 @@ const LOGO_SVG = `
 </svg>`;
 
 const LINK_ICON = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a4 4 0 0 0 5.66 0l3-3A4 4 0 0 0 13 4.34l-1.5 1.5"/><path d="M14 11a4 4 0 0 0-5.66 0l-3 3A4 4 0 0 0 11 19.66l1.5-1.5"/></svg>`;
+
+const TABS: ReadonlyArray<readonly [id: string, fmt: ExportFormat, label: string]> = [
+  ['tab-css', 'css', 'CSS変数'],
+  ['tab-scss', 'scss', 'SCSS'],
+  ['tab-tailwind', 'tailwind', 'Tailwind'],
+  ['tab-json', 'json', 'JSON'],
+];
 
 export class App {
   private readonly el: Record<string, HTMLElement> = {};
@@ -97,6 +107,15 @@ export class App {
 
         <section class="block">
           <div class="block-head">
+            <p class="kicker">harmony</p>
+            <h2>配色</h2>
+          </div>
+          <p class="hint">色相環の関係から導いた、ベースカラーと相性のよい配色。各色をクリックすると、その色をベースに置き換えて深掘りできる。</p>
+          <div class="harmony" data-id="harmony"></div>
+        </section>
+
+        <section class="block">
+          <div class="block-head">
             <p class="kicker">theme specimens</p>
             <h2>テーマプレビュー</h2>
           </div>
@@ -112,8 +131,10 @@ export class App {
             </span>
             <span class="export-controls">
               <span class="tabs" role="tablist" aria-label="書き出し形式">
-                <button type="button" class="tab" role="tab" aria-selected="true" data-id="tab-css">CSS変数</button>
-                <button type="button" class="tab" role="tab" aria-selected="false" data-id="tab-json">JSON</button>
+                ${TABS.map(
+                  ([id, , label]) =>
+                    `<button type="button" class="tab" role="tab" aria-selected="false" data-id="${id}">${label}</button>`,
+                ).join('')}
               </span>
               <button type="button" class="solid-btn" data-id="copy">コピー</button>
             </span>
@@ -151,8 +172,9 @@ export class App {
     share.addEventListener('click', () => {
       void this.copyText(location.href, '共有リンクを').then((ok) => ok && this.flash(share, 'ring'));
     });
-    this.el['tab-css']!.addEventListener('click', () => this.switchTab('css'));
-    this.el['tab-json']!.addEventListener('click', () => this.switchTab('json'));
+    for (const [id, fmt] of TABS) {
+      this.el[id]!.addEventListener('click', () => this.switchTab(fmt));
+    }
     const copyBtn = this.el['copy']!;
     copyBtn.addEventListener('click', () => {
       void this.copyText(this.el['output']!.textContent ?? '', '書き出しを').then(
@@ -199,8 +221,9 @@ export class App {
   }
 
   private applyTabUI(): void {
-    this.el['tab-css']!.setAttribute('aria-selected', String(this.exportKind === 'css'));
-    this.el['tab-json']!.setAttribute('aria-selected', String(this.exportKind === 'json'));
+    for (const [id, fmt] of TABS) {
+      this.el[id]!.setAttribute('aria-selected', String(this.exportKind === fmt));
+    }
   }
 
   private update(value: string, commit: boolean): void {
@@ -226,6 +249,7 @@ export class App {
 
     this.renderChip(canonical, base);
     this.renderScale();
+    this.renderHarmony();
     this.renderThemes(commit);
     this.setExport();
     this.syncUrl();
@@ -279,6 +303,36 @@ export class App {
     });
   }
 
+  private renderHarmony(): void {
+    const wrap = this.el['harmony']!;
+    const schemes = harmonies(this.current)!;
+    wrap.innerHTML = '';
+    for (const scheme of schemes) {
+      const row = document.createElement('div');
+      row.className = 'harmony-row';
+      const label = document.createElement('span');
+      label.className = 'harmony-label';
+      label.textContent = scheme.label;
+      const strip = document.createElement('div');
+      strip.className = 'harmony-strip';
+      strip.setAttribute('role', 'list');
+      for (const color of scheme.colors) {
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'harmony-swatch';
+        sw.setAttribute('role', 'listitem');
+        sw.style.background = color;
+        sw.style.color = readableTextColor(color);
+        sw.setAttribute('aria-label', `${scheme.label}の${color}をベースにする`);
+        sw.innerHTML = `<code>${color}</code>`;
+        sw.addEventListener('click', () => this.pick(color));
+        strip.appendChild(sw);
+      }
+      row.append(label, strip);
+      wrap.appendChild(row);
+    }
+  }
+
   private renderThemes(animate: boolean): void {
     const wrap = this.el['themes']!;
     const pair = themePair(this.current)!;
@@ -324,8 +378,15 @@ export class App {
   private setExport(): void {
     const scale = toneScale(this.current)!;
     const pair = themePair(this.current)!;
-    this.el['output']!.textContent =
-      this.exportKind === 'css' ? toCssVariables(pair) : toJson(scale, pair);
+    const text =
+      this.exportKind === 'css'
+        ? toCssVariables(pair)
+        : this.exportKind === 'scss'
+          ? toScss(scale, pair)
+          : this.exportKind === 'tailwind'
+            ? toTailwind(scale, pair)
+            : toJson(scale, pair);
+    this.el['output']!.textContent = text;
   }
 
   private syncUrl(): void {
