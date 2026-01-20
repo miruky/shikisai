@@ -21,6 +21,11 @@ describe('decodeShare', () => {
     expect(decodeShare('c=abc')).toEqual({ color: '#aabbcc' });
   });
 
+  it('scss・tailwind形式も受け付ける', () => {
+    expect(decodeShare('c=3f7fd4&fmt=scss')).toEqual({ color: '#3f7fd4', format: 'scss' });
+    expect(decodeShare('c=3f7fd4&fmt=tailwind').format).toBe('tailwind');
+  });
+
   it('読めない色や不明な形式は無視する', () => {
     expect(decodeShare('c=nope&fmt=xml')).toEqual({});
     expect(decodeShare('')).toEqual({});
