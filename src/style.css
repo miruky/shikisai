@@ -655,6 +655,29 @@ main {
   text-wrap: pretty;
 }
 
+.shortcuts {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shortcuts kbd {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 5px;
+  padding: 1px 7px;
+}
+
+.shortcuts .sep {
+  color: var(--rule-strong);
+  margin: 0 4px;
+}
+
 /* ── 狭い画面 ── */
 
 @media (max-width: 760px) {
