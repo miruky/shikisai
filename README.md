@@ -19,10 +19,12 @@
 
 ## 使い方
 
-1. 右上のピッカーかHEX欄でベースカラーを決める
-2. トーンスケールのバッジで、各トーンに白字・黒字を載せられるか確認する
+1. ピッカーかHEX欄でベースカラーを決める。HEX欄は3桁・大文字・先頭の`#`なしも受け付ける。ランダムボタンで適度な彩度・明度の色を引くこともできる
+2. トーンスケールのバッジで、各トーンに白字・黒字を載せられるか確認する。スケールの各色はクリックでHEXをコピーできる
 3. テーマプレビューでライト・ダークの見え方と実測比を確認する
 4. CSS変数(prefers-color-scheme対応)またはJSONをコピーする
+
+選んだ色と書き出し形式はURLに保存されるため、リンクボタンでそのままの状態を共有できます。直前に見た色は「最近」として残り、クリックで戻せます。画面右上の切り替えで、地のテーマを自動(OSに追従)・ライト・ダークから選べます。
 
 ### 出力されるCSS変数の例
 
@@ -55,17 +57,20 @@ sRGBとOKLCHの相互変換(`lib/color`)、WCAGコントラスト計算(`lib/con
 | 言語     | TypeScript 5(strict)            |
 | 色空間   | OKLCH(自前実装、実行時依存なし) |
 | ビルド   | Vite                            |
-| テスト   | Vitest(19テスト)                |
+| テスト   | Vitest(31テスト)                |
 | リンタ   | ESLint + Prettier               |
 | CI / CD  | GitHub Actions                  |
 | 配信     | GitHub Pages                    |
 
 ## プロジェクト構成
 
-- `src/lib/color.ts` — sRGBとOKLCHの相互変換、色域判定と彩度の切り詰め
+- `src/lib/color.ts` — sRGBとOKLCHの相互変換、色域判定と彩度の切り詰め、HEXの正規化
 - `src/lib/contrast.ts` — WCAG相対輝度・コントラスト比・段階判定
-- `src/lib/palette.ts` — トーンスケールとテーマトークンの導出、CSS / JSON書き出し
-- `src/app.ts` — 画面の構築とプレビュー
+- `src/lib/palette.ts` — トーンスケールとテーマトークンの導出、ランダム色、CSS / JSON書き出し
+- `src/lib/share.ts` — ベースカラーと書き出し形式のURLクエリへの符号化・復号
+- `src/lib/history.ts` — 最近使った色の履歴操作
+- `src/theme.ts` — 自動・ライト・ダークのテーマ切り替え
+- `src/app.ts` — 画面の構築とプレビュー、各操作の配線
 - `docs` — アーキテクチャ図
 - `.github/workflows` — CIとGitHub Pagesデプロイ
 
