@@ -3,7 +3,13 @@
 
 import { normalizeHex } from './color';
 
-export type ExportFormat = 'css' | 'json';
+export type ExportFormat = 'css' | 'json' | 'scss' | 'tailwind';
+
+const FORMATS: readonly ExportFormat[] = ['css', 'json', 'scss', 'tailwind'];
+
+function isFormat(value: string | null): value is ExportFormat {
+  return value !== null && (FORMATS as readonly string[]).includes(value);
+}
 
 export interface ShareState {
   color: string;
@@ -26,6 +32,6 @@ export function decodeShare(search: string): Partial<ShareState> {
     if (hex) out.color = hex;
   }
   const fmt = params.get('fmt');
-  if (fmt === 'json' || fmt === 'css') out.format = fmt;
+  if (isFormat(fmt)) out.format = fmt;
   return out;
 }
