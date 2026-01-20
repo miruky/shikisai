@@ -137,3 +137,65 @@ export function toJson(scale: ToneScale, pair: ThemePair): string {
     2,
   );
 }
+
+function tokenEntries(tokens: ThemeTokens): Array<[string, string]> {
+  return [
+    ['background', tokens.background],
+    ['surface', tokens.surface],
+    ['border', tokens.border],
+    ['text', tokens.text],
+    ['text-dim', tokens.textDim],
+    ['primary', tokens.primary],
+    ['primary-text', tokens.primaryText],
+    ['primary-hover', tokens.primaryHover],
+  ];
+}
+
+export function toScss(scale: ToneScale, pair: ThemePair): string {
+  const tones = scale.tones.map(({ step, hex }) => `$tone-${step}: ${hex};`).join('\n');
+  const theme = (name: string, tokens: ThemeTokens) =>
+    tokenEntries(tokens)
+      .map(([k, v]) => `$${name}-${k}: ${v};`)
+      .join('\n');
+  return [
+    '// トーンスケール',
+    tones,
+    '',
+    '// ライトテーマ',
+    theme('light', pair.light),
+    '',
+    '// ダークテーマ',
+    theme('dark', pair.dark),
+    '',
+  ].join('\n');
+}
+
+export function toTailwind(scale: ToneScale, pair: ThemePair): string {
+  const pad = '          '; // 入れ子のcolors値の段付け
+  const brand = scale.tones.map(({ step, hex }) => `${pad}${step}: '${hex}',`).join('\n');
+  const semantic = (tokens: ThemeTokens) =>
+    tokenEntries(tokens)
+      .map(([k, v]) => `${pad}${k.replace(/-/g, '')}: '${v}',`)
+      .join('\n');
+  return [
+    '// tailwind.config.js — theme.extend.colors',
+    'export default {',
+    '  theme: {',
+    '    extend: {',
+    '      colors: {',
+    '        brand: {',
+    brand,
+    '        },',
+    '        light: {',
+    semantic(pair.light),
+    '        },',
+    '        dark: {',
+    semantic(pair.dark),
+    '        },',
+    '      },',
+    '    },',
+    '  },',
+    '};',
+    '',
+  ].join('\n');
+}

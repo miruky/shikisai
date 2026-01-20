@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { hexToOklch, normalizeHex } from './color';
 import { contrastRatio } from './contrast';
-import { randomBaseColor, themePair, toCssVariables, toJson, TONE_STEPS, toneScale } from './palette';
+import {
+  randomBaseColor,
+  themePair,
+  toCssVariables,
+  toJson,
+  toScss,
+  toTailwind,
+  TONE_STEPS,
+  toneScale,
+} from './palette';
 
 describe('toneScale', () => {
   it('10トーンを明るい順に生成する', () => {
@@ -75,5 +84,21 @@ describe('エクスポート', () => {
     expect(Object.keys(data.scale)).toHaveLength(10);
     expect(data.themes).toHaveProperty('light');
     expect(data.themes).toHaveProperty('dark');
+  });
+
+  it('SCSSはトーンとライト・ダークの変数を持つ', () => {
+    const scss = toScss(toneScale('#3f7fd4')!, themePair('#3f7fd4')!);
+    expect(scss).toContain('$tone-50:');
+    expect(scss).toContain('$tone-900:');
+    expect(scss).toContain('$light-background:');
+    expect(scss).toContain('$dark-primary:');
+  });
+
+  it('Tailwind設定はbrandスケールとセマンティック色を持つ', () => {
+    const tw = toTailwind(toneScale('#3f7fd4')!, themePair('#3f7fd4')!);
+    expect(tw).toContain('brand: {');
+    expect(tw).toContain("50: '#");
+    expect(tw).toContain('light: {');
+    expect(tw).toContain('dark: {');
   });
 });

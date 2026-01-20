@@ -10,6 +10,7 @@ import {
   type ThemeTokens,
 } from './lib/palette';
 import { decodeShare, encodeShare, type ExportFormat } from './lib/share';
+import { animateValue, prefersReducedMotion } from './motion';
 import { applyTheme, nextTheme, readTheme, themeIcon, THEME_LABEL, type ThemeChoice } from './theme';
 
 const DEFAULT_COLOR = '#3f7fd4';
@@ -32,6 +33,8 @@ export class App {
   private theme: ThemeChoice = readTheme();
   private current = DEFAULT_COLOR;
   private recent: string[] = [];
+  private prevRatios: number[] = [];
+  private scaleEntered = false;
 
   constructor(private readonly root: HTMLElement) {
     this.recent = this.readRecent();
@@ -140,14 +143,21 @@ export class App {
     picker.addEventListener('change', () => this.update(picker.value, true));
     hex.addEventListener('input', () => this.update(hex.value, false));
     hex.addEventListener('change', () => this.update(hex.value, true));
-    this.el['random']!.addEventListener('click', () => this.pick(randomBaseColor()));
-    this.el['share']!.addEventListener('click', () => {
-      void this.copy(location.href, '共有リンクを');
+    this.el['random']!.addEventListener('click', () => {
+      this.rollDice();
+      this.pick(randomBaseColor());
+    });
+    const share = this.el['share']!;
+    share.addEventListener('click', () => {
+      void this.copyText(location.href, '共有リンクを').then((ok) => ok && this.flash(share, 'ring'));
     });
     this.el['tab-css']!.addEventListener('click', () => this.switchTab('css'));
     this.el['tab-json']!.addEventListener('click', () => this.switchTab('json'));
-    this.el['copy']!.addEventListener('click', () => {
-      void this.copy(this.el['output']!.textContent ?? '', '書き出しを');
+    const copyBtn = this.el['copy']!;
+    copyBtn.addEventListener('click', () => {
+      void this.copyText(this.el['output']!.textContent ?? '', '書き出しを').then(
+        (ok) => ok && this.flash(copyBtn, 'label'),
+      );
     });
     this.el['theme']!.addEventListener('click', () => {
       this.theme = nextTheme(this.theme);
@@ -163,6 +173,16 @@ export class App {
     (this.el['picker'] as HTMLInputElement).value = color;
     (this.el['hex'] as HTMLInputElement).value = color;
     this.update(color, true);
+  }
+
+  // ランダム時にサイコロのアイコンを一度だけ回す(reduced-motionでは何もしない)
+  private rollDice(): void {
+    if (prefersReducedMotion()) return;
+    const svg = this.el['random']!.querySelector('svg');
+    if (!svg) return;
+    svg.classList.remove('rolling');
+    void svg.getBoundingClientRect();
+    svg.classList.add('rolling');
   }
 
   private renderThemeToggle(): void {
@@ -194,6 +214,10 @@ export class App {
     error.hidden = true;
     this.current = canonical;
     (this.el['picker'] as HTMLInputElement).value = canonical;
+    // ピッカー・ランダム・URL読込・最近の色など、HEX欄以外からの変更を欄へ反映する。
+    // 欄を編集中(フォーカス中)のときは打鍵を妨げないよう触らない。
+    const hexInput = this.el['hex'] as HTMLInputElement;
+    if (document.activeElement !== hexInput) hexInput.value = canonical;
 
     // 地のテーマのアクセント(罫線・フォーカス輪郭)を選択色の色相へ寄せる。
     // --accent は :root で解決されるため :root(html)側に書き込む。
@@ -202,7 +226,7 @@ export class App {
 
     this.renderChip(canonical, base);
     this.renderScale();
-    this.renderThemes();
+    this.renderThemes(commit);
     this.setExport();
     this.syncUrl();
     if (commit) this.remember(canonical);
@@ -226,11 +250,15 @@ export class App {
   private renderScale(): void {
     const wrap = this.el['scale']!;
     const scale = toneScale(this.current)!;
+    // 入場のスタッガは初回だけ。色変更のたびに animate すると目障りなため。
+    const enter = !this.scaleEntered && !prefersReducedMotion();
+    this.scaleEntered = true;
     wrap.innerHTML = '';
-    for (const { step, hex } of scale.tones) {
+    scale.tones.forEach(({ step, hex }, i) => {
       const cell = document.createElement('button');
       cell.type = 'button';
-      cell.className = 'swatch';
+      cell.className = enter ? 'swatch enter' : 'swatch';
+      if (enter) cell.style.animationDelay = `${i * 35}ms`;
       cell.setAttribute('role', 'listitem');
       cell.style.background = hex;
       cell.style.color = readableTextColor(hex);
@@ -244,12 +272,14 @@ export class App {
           <span class="badge ${onWhite === 'fail' ? 'is-fail' : ''}">白 ${onWhite}</span>
           <span class="badge ${onBlack === 'fail' ? 'is-fail' : ''}">黒 ${onBlack}</span>
         </span>`;
-      cell.addEventListener('click', () => void this.copy(hex, `${hex} を`));
+      cell.addEventListener('click', () => {
+        void this.copyText(hex, `${hex} を`).then((ok) => ok && this.flash(cell, 'ring'));
+      });
       wrap.appendChild(cell);
-    }
+    });
   }
 
-  private renderThemes(): void {
+  private renderThemes(animate: boolean): void {
     const wrap = this.el['themes']!;
     const pair = themePair(this.current)!;
     wrap.innerHTML = '';
@@ -257,9 +287,11 @@ export class App {
       ['ライト', pair.light],
       ['ダーク', pair.dark],
     ];
+    const ratios: number[] = [];
     for (const [name, tokens] of cards) {
-      const bodyRatio = contrastRatio(tokens.text, tokens.background).toFixed(1);
-      const buttonRatio = contrastRatio(tokens.primaryText, tokens.primary).toFixed(1);
+      const bodyRatio = contrastRatio(tokens.text, tokens.background);
+      const buttonRatio = contrastRatio(tokens.primaryText, tokens.primary);
+      ratios.push(bodyRatio, buttonRatio);
       const card = document.createElement('div');
       card.className = 'specimen';
       card.style.background = tokens.background;
@@ -272,10 +304,21 @@ export class App {
           <p style="color:${tokens.textDim}">補足の文字色はこの程度の濃さになる。</p>
           <button type="button" tabindex="-1" style="background:${tokens.primary};color:${tokens.primaryText}">主要ボタン</button>
         </div>
-        <p class="specimen-ratios" style="color:${tokens.textDim}">本文 <b>${bodyRatio}</b>:1 / ボタン文字 <b>${buttonRatio}</b>:1</p>
+        <p class="specimen-ratios" style="color:${tokens.textDim}">本文 <b></b>:1 / ボタン文字 <b></b>:1</p>
       `;
       wrap.appendChild(card);
     }
+    // コントラスト比は確定操作(commit)のときだけカウントアップする。打鍵中は即時表示。
+    const cells = wrap.querySelectorAll<HTMLElement>('.specimen-ratios b');
+    const canAnimate = animate && this.prevRatios.length === ratios.length;
+    cells.forEach((b, i) => {
+      const to = ratios[i]!;
+      const from = canAnimate ? this.prevRatios[i]! : to;
+      animateValue(from, to, 480, (v) => {
+        b.textContent = v.toFixed(1);
+      });
+    });
+    this.prevRatios = ratios;
   }
 
   private setExport(): void {
@@ -330,13 +373,36 @@ export class App {
     }
   }
 
-  private async copy(text: string, label: string): Promise<void> {
+  private async copyText(text: string, label: string): Promise<boolean> {
     try {
       await navigator.clipboard.writeText(text);
       this.announce(`${label}コピーした`);
+      return true;
     } catch {
       this.announce('コピーできなかった');
+      return false;
     }
+  }
+
+  // コピー成功を短時間だけ見せる。label=文言の差し替え、ring=枠の点灯。
+  private flash(el: HTMLElement, kind: 'label' | 'ring'): void {
+    if (kind === 'label') {
+      if (el.dataset['label'] === undefined) el.dataset['label'] = el.textContent ?? '';
+      el.textContent = 'コピー済み';
+    }
+    el.classList.add('is-copied');
+    const prev = Number(el.dataset['flash'] ?? 0);
+    if (prev) clearTimeout(prev);
+    const ms = kind === 'label' ? 1100 : 750;
+    el.dataset['flash'] = String(
+      setTimeout(() => {
+        el.classList.remove('is-copied');
+        if (kind === 'label' && el.dataset['label'] !== undefined) {
+          el.textContent = el.dataset['label'];
+        }
+        el.dataset['flash'] = '';
+      }, ms),
+    );
   }
 
   private announce(message: string): void {
