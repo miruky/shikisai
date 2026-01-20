@@ -185,6 +185,15 @@ body {
   border-color: var(--accent-weak);
 }
 
+.ghost-btn.is-copied {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.ghost-btn svg.rolling {
+  animation: roll 0.45s var(--ease);
+}
+
 .solid-btn {
   font: inherit;
   font-size: 0.82rem;
@@ -206,6 +215,10 @@ body {
 
 .solid-btn:active {
   transform: translateY(1px);
+}
+
+.solid-btn.is-copied {
+  background: var(--accent);
 }
 
 /* ── ヒーロー: 色チップ ── */
@@ -421,6 +434,10 @@ main {
   outline-offset: -5px;
 }
 
+.swatch.is-copied {
+  box-shadow: inset 0 0 0 3px currentColor;
+}
+
 .swatch-step {
   font-weight: 700;
   font-size: 1.05rem;
@@ -518,22 +535,36 @@ main {
 }
 
 .tab {
+  position: relative;
   font: inherit;
   font-size: 0.82rem;
   color: var(--ink-faint);
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
   padding: 6px 2px;
   cursor: pointer;
-  transition:
-    color 0.18s var(--ease),
-    border-color 0.18s var(--ease);
+  transition: color 0.18s var(--ease);
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s var(--ease);
 }
 
 .tab[aria-selected='true'] {
   color: var(--ink);
-  border-bottom-color: var(--accent);
+}
+
+.tab[aria-selected='true']::after {
+  transform: scaleX(1);
 }
 
 .code {
@@ -597,6 +628,72 @@ main {
     margin-top: 0;
     flex-direction: row;
     gap: 10px;
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes swatch-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes roll {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+/* 入場の演出は動きを許可している環境だけ。reduced-motion では最初から定位置で見せる。 */
+@media (prefers-reduced-motion: no-preference) {
+  .masthead {
+    animation: enter 0.6s var(--ease) both;
+  }
+
+  .chip {
+    animation: enter 0.6s var(--ease) 0.06s both;
+  }
+
+  .block {
+    animation: enter 0.6s var(--ease) both;
+  }
+
+  .block:nth-of-type(1) {
+    animation-delay: 0.12s;
+  }
+
+  .block:nth-of-type(2) {
+    animation-delay: 0.18s;
+  }
+
+  .block:nth-of-type(3) {
+    animation-delay: 0.24s;
+  }
+
+  .colophon {
+    animation: enter 0.6s var(--ease) 0.3s both;
+  }
+
+  .swatch.enter {
+    animation: swatch-in 0.5s var(--ease) both;
   }
 }
 
