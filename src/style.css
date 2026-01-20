@@ -468,6 +468,68 @@ main {
   text-decoration: line-through;
 }
 
+/* ── 配色(色相環) ── */
+
+.harmony {
+  display: flex;
+  flex-direction: column;
+}
+
+.harmony-row {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.harmony-row:last-child {
+  border-bottom: none;
+}
+
+.harmony-label {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.harmony-strip {
+  display: flex;
+}
+
+.harmony-swatch {
+  flex: 1;
+  min-height: 58px;
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 9px;
+  font: inherit;
+  border: none;
+  cursor: pointer;
+  transition: box-shadow 0.15s var(--ease);
+}
+
+.harmony-swatch code {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+
+.harmony-swatch:hover code,
+.harmony-swatch:focus-visible code {
+  opacity: 0.9;
+}
+
+.harmony-swatch:hover {
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.harmony-swatch:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -5px;
+}
+
 /* ── テーマ見本 ── */
 
 .specimens {
@@ -629,6 +691,11 @@ main {
     flex-direction: row;
     gap: 10px;
   }
+
+  .harmony-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 }
 
 @keyframes enter {
@@ -688,8 +755,12 @@ main {
     animation-delay: 0.24s;
   }
 
+  .block:nth-of-type(4) {
+    animation-delay: 0.3s;
+  }
+
   .colophon {
-    animation: enter 0.6s var(--ease) 0.3s both;
+    animation: enter 0.6s var(--ease) 0.36s both;
   }
 
   .swatch.enter {
