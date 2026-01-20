@@ -55,6 +55,20 @@ describe('themePair', () => {
   });
 });
 
+describe('極端な色の扱い', () => {
+  it('白・黒・無彩色でもスケールとテーマが壊れない', () => {
+    for (const hex of ['#ffffff', '#000000', '#808080']) {
+      const scale = toneScale(hex);
+      expect(scale).not.toBeNull();
+      for (const { hex: h } of scale!.tones) expect(h).toMatch(/^#[0-9a-f]{6}$/);
+      const pair = themePair(hex)!;
+      // 無彩色を選んでも本文AAA・ボタンAAの保証は保たれる
+      expect(contrastRatio(pair.light.text, pair.light.background)).toBeGreaterThanOrEqual(7);
+      expect(contrastRatio(pair.dark.primaryText, pair.dark.primary)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 describe('randomBaseColor', () => {
   it('常に正規のHEXを返し、スケールを生成できる', () => {
     for (let i = 0; i < 50; i += 1) {
