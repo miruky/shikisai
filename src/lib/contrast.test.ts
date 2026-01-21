@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contrastRatio, readableTextColor, wcagLevel } from './contrast';
+import { contrastRatio, readableTextColor, wcagChecks, wcagLevel } from './contrast';
 
 describe('contrastRatio', () => {
   it('白と黒は21:1', () => {
@@ -24,6 +24,44 @@ describe('wcagLevel', () => {
     expect(wcagLevel(4.5)).toBe('AA');
     expect(wcagLevel(3)).toBe('AA-large');
     expect(wcagLevel(2.9)).toBe('fail');
+  });
+});
+
+describe('wcagChecks', () => {
+  it('比21:1は全基準を満たす', () => {
+    expect(wcagChecks(21)).toEqual({
+      normalAA: true,
+      normalAAA: true,
+      largeAA: true,
+      largeAAA: true,
+    });
+  });
+
+  it('比4.5は通常AAと大きいAA/AAAを満たすが通常AAAは満たさない', () => {
+    expect(wcagChecks(4.5)).toEqual({
+      normalAA: true,
+      normalAAA: false,
+      largeAA: true,
+      largeAAA: true,
+    });
+  });
+
+  it('比3は大きいAAのみ満たす', () => {
+    expect(wcagChecks(3)).toEqual({
+      normalAA: false,
+      normalAAA: false,
+      largeAA: true,
+      largeAAA: false,
+    });
+  });
+
+  it('比2.9はすべて満たさない', () => {
+    expect(wcagChecks(2.9)).toEqual({
+      normalAA: false,
+      normalAAA: false,
+      largeAA: false,
+      largeAAA: false,
+    });
   });
 });
 

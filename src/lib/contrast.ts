@@ -31,6 +31,23 @@ export function wcagLevel(ratio: number): WcagLevel {
   return 'fail';
 }
 
+export interface WcagChecks {
+  normalAA: boolean; // 通常テキスト AA(>=4.5)
+  normalAAA: boolean; // 通常テキスト AAA(>=7)
+  largeAA: boolean; // 大きいテキスト AA(>=3)
+  largeAAA: boolean; // 大きいテキスト AAA(>=4.5)
+}
+
+// コントラスト比を、テキストサイズ別のWCAG各基準への合否に展開する。
+export function wcagChecks(ratio: number): WcagChecks {
+  return {
+    normalAA: ratio >= 4.5,
+    normalAAA: ratio >= 7,
+    largeAA: ratio >= 3,
+    largeAAA: ratio >= 4.5,
+  };
+}
+
 // 背景に対して読みやすい文字色(白か黒)を選ぶ
 export function readableTextColor(background: string): string {
   return contrastRatio(background, '#ffffff') >= contrastRatio(background, '#000000')
