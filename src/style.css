@@ -470,6 +470,130 @@ main {
 
 /* ── 配色(色相環) ── */
 
+/* ── コントラストチェッカー ── */
+
+.checker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 20px 28px;
+  align-items: center;
+}
+
+.checker-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checker-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checker-tag {
+  width: 3.5rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.checker-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checker-pick input[type='color'] {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+
+.checker-pick input[type='text'] {
+  width: 8rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+
+.checker-pick input[type='text']:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.checker-preview {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 112px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--rule);
+}
+
+.checker-ratio {
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.checker-sample {
+  font-size: 1rem;
+}
+
+.checker-badges {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.check-badge {
+  font-size: 0.78rem;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink-soft);
+}
+
+.check-badge.is-pass {
+  color: #1c6b46;
+  border-color: color-mix(in srgb, #1c6b46 40%, var(--rule));
+  background: color-mix(in srgb, #1c6b46 10%, transparent);
+}
+
+.check-badge.is-fail {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 36%, var(--rule));
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+:root[data-theme='dark'] .check-badge.is-pass {
+  color: #8fd3ab;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .check-badge.is-pass {
+    color: #8fd3ab;
+  }
+}
+
+@media (max-width: 620px) {
+  .checker {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── 色覚シミュレーション ── */
 
 .cvd {
