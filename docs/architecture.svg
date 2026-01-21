@@ -1,12 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 220" role="img" aria-label="shikisaiのアーキテクチャ図" color="#768390">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 280" role="img" aria-label="shikisaiのアーキテクチャ図" color="#5b6168">
   <title>shikisaiのアーキテクチャ</title>
   <style>
-    .box { fill: none; stroke: currentColor; stroke-width: 1.5; }
-    .accent-box { fill: none; stroke: #5a9bd4; stroke-width: 1.5; }
+    .box { fill: none; stroke: currentColor; stroke-width: 1.25; }
     .label { font: 600 14px 'Hiragino Sans', 'Noto Sans JP', sans-serif; fill: currentColor; }
     .small { font: 400 11.5px 'Hiragino Sans', 'Noto Sans JP', sans-serif; fill: currentColor; }
-    .accent-label { font: 700 14px 'Hiragino Sans', 'Noto Sans JP', sans-serif; fill: #5a9bd4; }
-    .arrow { stroke: currentColor; stroke-width: 1.5; fill: none; marker-end: url(#head); }
+    .kicker { font: 600 10px 'Hiragino Sans', 'Noto Sans JP', sans-serif; fill: currentColor; letter-spacing: 0.16em; }
+    .arrow { stroke: currentColor; stroke-width: 1.25; fill: none; marker-end: url(#head); }
   </style>
   <defs>
     <marker id="head" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
@@ -14,32 +13,44 @@
     </marker>
   </defs>
 
-  <rect x="20" y="60" width="150" height="100" rx="8" class="box"/>
-  <text x="40" y="90" class="label">ベースカラー</text>
-  <text x="40" y="114" class="small">HEX入力 / ピッカー</text>
+  <text x="20" y="24" class="kicker">INPUT</text>
+  <rect x="20" y="36" width="150" height="74" rx="6" class="box"/>
+  <text x="38" y="66" class="label">ベースカラー</text>
+  <text x="38" y="88" class="small">HEX入力 / ピッカー</text>
 
-  <rect x="230" y="60" width="180" height="100" rx="8" class="accent-box"/>
-  <text x="250" y="88" class="accent-label">color(OKLCH)</text>
-  <text x="250" y="112" class="small">sRGBとの相互変換</text>
-  <text x="250" y="130" class="small">色域外の彩度切り詰め</text>
+  <text x="230" y="24" class="kicker">CORE / OKLCH</text>
+  <rect x="230" y="36" width="180" height="74" rx="6" class="box"/>
+  <text x="248" y="64" class="label">color</text>
+  <text x="248" y="86" class="small">sRGB相互変換・色域クランプ</text>
 
-  <rect x="470" y="20" width="180" height="80" rx="8" class="box"/>
-  <text x="490" y="48" class="label">palette</text>
-  <text x="490" y="72" class="small">トーンスケール10段</text>
-  <text x="490" y="90" class="small">ライト・ダークトークン</text>
+  <rect x="470" y="20" width="180" height="62" rx="6" class="box"/>
+  <text x="488" y="44" class="label">palette</text>
+  <text x="488" y="66" class="small">トーン10段・テーマトークン</text>
 
-  <rect x="470" y="120" width="180" height="80" rx="8" class="box"/>
-  <text x="490" y="148" class="label">contrast</text>
-  <text x="490" y="172" class="small">WCAG比とAA/AAA判定</text>
+  <rect x="470" y="100" width="180" height="50" rx="6" class="box"/>
+  <text x="488" y="124" class="label">harmony</text>
+  <text x="488" y="142" class="small">色相環の配色</text>
 
-  <rect x="710" y="60" width="130" height="100" rx="8" class="box"/>
-  <text x="730" y="90" class="label">出力</text>
-  <text x="730" y="114" class="small">プレビュー</text>
-  <text x="730" y="132" class="small">CSS変数 / JSON</text>
+  <rect x="470" y="168" width="180" height="50" rx="6" class="box"/>
+  <text x="488" y="192" class="label">contrast</text>
+  <text x="488" y="210" class="small">WCAG比とAA/AAA判定</text>
 
-  <path class="arrow" d="M170 110 H222"/>
-  <path class="arrow" d="M410 110 H462 V64"/>
-  <path class="arrow" d="M410 110 H462 V156"/>
-  <path class="arrow" d="M650 60 H702 V96"/>
-  <path class="arrow" d="M650 160 H702 V124"/>
+  <text x="710" y="24" class="kicker">OUTPUT</text>
+  <rect x="710" y="36" width="150" height="110" rx="6" class="box"/>
+  <text x="728" y="66" class="label">書き出し</text>
+  <text x="728" y="90" class="small">プレビュー</text>
+  <text x="728" y="110" class="small">CSS / SCSS</text>
+  <text x="728" y="128" class="small">Tailwind / JSON</text>
+
+  <rect x="230" y="186" width="180" height="56" rx="6" class="box"/>
+  <text x="248" y="210" class="label">app</text>
+  <text x="248" y="230" class="small">URL・履歴・テーマ保存</text>
+
+  <path class="arrow" d="M170 73 H222"/>
+  <path class="arrow" d="M410 73 H462 V51"/>
+  <path class="arrow" d="M410 80 H440 V125 H462"/>
+  <path class="arrow" d="M410 90 H430 V193 H462"/>
+  <path class="arrow" d="M650 51 H682 V84"/>
+  <path class="arrow" d="M650 125 H672 V96"/>
+  <path class="arrow" d="M320 110 V186"/>
 </svg>
