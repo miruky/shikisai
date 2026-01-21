@@ -470,6 +470,46 @@ main {
 
 /* ── 配色(色相環) ── */
 
+/* ── 色覚シミュレーション ── */
+
+.cvd {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cvd-row {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.cvd-label {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.cvd-strip {
+  display: flex;
+  height: 30px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+}
+
+.cvd-cell {
+  flex: 1;
+}
+
+@media (max-width: 560px) {
+  .cvd-row {
+    grid-template-columns: 4rem 1fr;
+    gap: 10px;
+  }
+}
+
 .harmony {
   display: flex;
   flex-direction: column;
