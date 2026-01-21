@@ -1,5 +1,5 @@
 import { hexToOklch, normalizeHex } from './lib/color';
-import { contrastRatio, readableTextColor, wcagLevel } from './lib/contrast';
+import { contrastRatio, readableTextColor, wcagChecks, wcagLevel } from './lib/contrast';
 import { CVD_LABEL, CVD_TYPES, simulateCvd } from './lib/cvd';
 import { harmonies } from './lib/harmony';
 import { pushRecent } from './lib/history';
@@ -53,6 +53,9 @@ export class App {
   private recent: string[] = [];
   private prevRatios: number[] = [];
   private scaleEntered = false;
+  // コントラストチェッカーはベースカラーとは独立した2色を持つ。
+  private pairFg = '#1f2933';
+  private pairBg = '#ffffff';
 
   constructor(private readonly root: HTMLElement) {
     this.recent = this.readRecent();
@@ -141,6 +144,37 @@ export class App {
         </section>
 
         <section class="block">
+          <div class="block-head">
+            <p class="kicker">contrast</p>
+            <h2>コントラストチェック</h2>
+          </div>
+          <p class="hint">任意の2色のコントラスト比とWCAG各基準への合否を確かめる。文字色と背景色を選ぶと即座に判定する。</p>
+          <div class="checker">
+            <div class="checker-fields">
+              <label class="checker-field">
+                <span class="checker-tag">文字色</span>
+                <span class="checker-pick">
+                  <input type="color" data-id="fg-picker" value="#1f2933" aria-label="文字色をピッカーで選ぶ" />
+                  <input type="text" data-id="fg-hex" value="#1f2933" spellcheck="false" autocomplete="off" aria-label="文字色のHEX値" />
+                </span>
+              </label>
+              <label class="checker-field">
+                <span class="checker-tag">背景色</span>
+                <span class="checker-pick">
+                  <input type="color" data-id="bg-picker" value="#ffffff" aria-label="背景色をピッカーで選ぶ" />
+                  <input type="text" data-id="bg-hex" value="#ffffff" spellcheck="false" autocomplete="off" aria-label="背景色のHEX値" />
+                </span>
+              </label>
+            </div>
+            <div class="checker-preview" data-id="check-preview">
+              <span class="checker-ratio" data-id="check-ratio"></span>
+              <span class="checker-sample">本文サンプル Aa 永</span>
+            </div>
+            <div class="checker-badges" data-id="check-badges"></div>
+          </div>
+        </section>
+
+        <section class="block">
           <div class="block-head pair">
             <span>
               <p class="kicker">export</p>
@@ -203,8 +237,54 @@ export class App {
     document.addEventListener('keydown', (e) => this.onShortcut(e));
     this.el['copy']!.addEventListener('click', () => this.copyExport());
     this.el['theme']!.addEventListener('click', () => this.cycleTheme());
+    this.wireChecker();
     this.renderThemeToggle();
     this.applyTabUI();
+  }
+
+  private wireChecker(): void {
+    const bind = (role: 'fg' | 'bg'): void => {
+      const picker = this.el[`${role}-picker`] as HTMLInputElement;
+      const hex = this.el[`${role}-hex`] as HTMLInputElement;
+      const set = (value: string, fromHex: boolean): void => {
+        const canonical = normalizeHex(value);
+        if (!canonical) return;
+        if (role === 'fg') this.pairFg = canonical;
+        else this.pairBg = canonical;
+        picker.value = canonical;
+        if (!fromHex && document.activeElement !== hex) hex.value = canonical;
+        this.renderPairCheck();
+      };
+      picker.addEventListener('input', () => set(picker.value, false));
+      hex.addEventListener('input', () => set(hex.value, true));
+    };
+    bind('fg');
+    bind('bg');
+    this.renderPairCheck();
+  }
+
+  // 任意の文字色×背景色のコントラスト比とWCAG各基準への合否を描く。
+  private renderPairCheck(): void {
+    const ratio = contrastRatio(this.pairFg, this.pairBg);
+    const preview = this.el['check-preview']!;
+    preview.style.background = this.pairBg;
+    preview.style.color = this.pairFg;
+    this.el['check-ratio']!.textContent = `${ratio.toFixed(2)} : 1`;
+    const checks = wcagChecks(ratio);
+    const items: Array<[string, boolean]> = [
+      ['通常 AA', checks.normalAA],
+      ['通常 AAA', checks.normalAAA],
+      ['大きめ AA', checks.largeAA],
+      ['大きめ AAA', checks.largeAAA],
+    ];
+    const badges = this.el['check-badges']!;
+    badges.innerHTML = '';
+    for (const [label, pass] of items) {
+      const badge = document.createElement('span');
+      badge.className = `check-badge ${pass ? 'is-pass' : 'is-fail'}`;
+      badge.textContent = `${label} ${pass ? '適合' : '不適合'}`;
+      badges.appendChild(badge);
+    }
   }
 
   // ボタン経由で色を確定する。入力欄の同期は update() が受け持つ。
