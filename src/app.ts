@@ -1,5 +1,6 @@
 import { hexToOklch, normalizeHex } from './lib/color';
 import { contrastRatio, readableTextColor, wcagLevel } from './lib/contrast';
+import { CVD_LABEL, CVD_TYPES, simulateCvd } from './lib/cvd';
 import { harmonies } from './lib/harmony';
 import { pushRecent } from './lib/history';
 import {
@@ -14,7 +15,14 @@ import {
 } from './lib/palette';
 import { decodeShare, encodeShare, type ExportFormat } from './lib/share';
 import { animateValue, prefersReducedMotion } from './motion';
-import { applyTheme, nextTheme, readTheme, themeIcon, THEME_LABEL, type ThemeChoice } from './theme';
+import {
+  applyTheme,
+  nextTheme,
+  readTheme,
+  themeIcon,
+  THEME_LABEL,
+  type ThemeChoice,
+} from './theme';
 
 const DEFAULT_COLOR = '#3f7fd4';
 const RECENT_KEY = 'shikisai:recent';
@@ -107,6 +115,15 @@ export class App {
 
         <section class="block">
           <div class="block-head">
+            <p class="kicker">color vision</p>
+            <h2>色覚シミュレーション</h2>
+          </div>
+          <p class="hint">同じトーンスケールを、代表的な色覚特性で見たときの近似。隣り合う段が見分けづらくならないかを確かめる(Wickline行列による目安)。</p>
+          <div class="cvd" data-id="cvd"></div>
+        </section>
+
+        <section class="block">
+          <div class="block-head">
             <p class="kicker">harmony</p>
             <h2>配色</h2>
           </div>
@@ -166,7 +183,9 @@ export class App {
     this.el['random']!.addEventListener('click', () => this.randomize());
     const share = this.el['share']!;
     share.addEventListener('click', () => {
-      void this.copyText(location.href, '共有リンクを').then((ok) => ok && this.flash(share, 'ring'));
+      void this.copyText(location.href, '共有リンクを').then(
+        (ok) => ok && this.flash(share, 'ring'),
+      );
     });
     for (const [id, fmt] of TABS) {
       this.el[id]!.addEventListener('click', () => this.switchTab(fmt));
@@ -285,6 +304,7 @@ export class App {
 
     this.renderChip(canonical, base);
     this.renderScale();
+    this.renderCvd();
     this.renderHarmony();
     this.renderThemes(commit);
     this.setExport();
@@ -336,6 +356,39 @@ export class App {
       });
       wrap.appendChild(cell);
     });
+  }
+
+  // トーンスケールを、通常+代表的な3つの色覚特性で並べて見え方を比べる。
+  private renderCvd(): void {
+    const wrap = this.el['cvd']!;
+    const tones = toneScale(this.current)!.tones.map((t) => t.hex);
+    const rows: Array<[string, string[]]> = [
+      ['通常', tones],
+      ...CVD_TYPES.map((type): [string, string[]] => [
+        CVD_LABEL[type],
+        tones.map((hex) => simulateCvd(hex, type) ?? hex),
+      ]),
+    ];
+    wrap.innerHTML = '';
+    for (const [label, colors] of rows) {
+      const row = document.createElement('div');
+      row.className = 'cvd-row';
+      const lab = document.createElement('span');
+      lab.className = 'cvd-label';
+      lab.textContent = label;
+      const strip = document.createElement('div');
+      strip.className = 'cvd-strip';
+      strip.setAttribute('role', 'img');
+      strip.setAttribute('aria-label', `${label}での見え方`);
+      for (const color of colors) {
+        const cell = document.createElement('span');
+        cell.className = 'cvd-cell';
+        cell.style.background = color;
+        strip.appendChild(cell);
+      }
+      row.append(lab, strip);
+      wrap.appendChild(row);
+    }
   }
 
   private renderHarmony(): void {
